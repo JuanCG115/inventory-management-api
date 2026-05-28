@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  # Servicio de la Base de Datos (PostgreSQL)
+  postgres-db:
+    image: postgres:15-alpine
+    container_name: modulo-inventario-db
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}       # Pon aquí el usuario que usas en tus variables
+      POSTGRES_PASSWORD: ${DB_PASSWORD}   # Pon aquí la contraseña que usas en tus variables
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Servicio de tu API de Spring Boot
+  api-service:
+    build: .
+    container_name: modulo-inventario-api
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-db:5432/${DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    depends_on:
+      postgres-db:
+        condition: service_healthy # Espera a que Postgres esté 100% activo
+
+volumes:
+  postgres_data:
